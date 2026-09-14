@@ -1,4 +1,3 @@
-Attribute VB_Name = "AFS_FootnoteCompare"
 Option Explicit
 
 '=====================================================================
@@ -477,6 +476,7 @@ Private Sub BuildCompare(mapP As Object, mapC As Object, wsDP As Worksheet, wsDC
     Dim hk As Variant, col As Long, tP As String, tC As String, same As Boolean
     Dim hasP As Boolean, hasC As Boolean, nChg As Long, chgList As String
     Dim secP As Object, secC As Object, status As String, anyDiff As Boolean
+    Dim fileP As String, fileC As String, remP As String, remC As String
 
     Set heads = CreateObject("Scripting.Dictionary")      ' key -> display, in column order
     CollectHeaders wsDP, heads
@@ -503,15 +503,31 @@ Private Sub BuildCompare(mapP As Object, mapC As Object, wsDP As Worksheet, wsDC
         code = codes(i)
         hasP = dataP.Exists(code): hasC = dataC.Exists(code)
         nChg = 0: chgList = "": anyDiff = False
-        If hasP Then Set secP = dataP(code)(2) Else Set secP = Nothing
-        If hasC Then Set secC = dataC(code)(2) Else Set secC = Nothing
+        Set secP = Nothing: Set secC = Nothing
+        fileP = "": fileC = "": remP = "": remC = ""
+        If hasP Then
+            Set secP = dataP(code)(2)
+            fileP = CStr(dataP(code)(0)): remP = CStr(dataP(code)(1))
+        ElseIf mapP.Exists(code) Then
+            fileP = "not extracted yet"
+        Else
+            fileP = "no " & YEAR_PRIOR & " file"
+        End If
+        If hasC Then
+            Set secC = dataC(code)(2)
+            fileC = CStr(dataC(code)(0)): remC = CStr(dataC(code)(1))
+        ElseIf mapC.Exists(code) Then
+            fileC = "not extracted yet"
+        Else
+            fileC = "no " & YEAR_CURRENT & " file"
+        End If
 
         wsCmp.Cells(r, 1).Value = code: wsCmp.Cells(r, 2).Value = YEAR_CURRENT
         wsCmp.Cells(r + 1, 1).Value = code: wsCmp.Cells(r + 1, 2).Value = YEAR_PRIOR
         wsCmp.Cells(r + 2, 1).Value = code: wsCmp.Cells(r + 2, 2).Value = "Same?"
         wsCmp.Cells(r + 3, 1).Value = code: wsCmp.Cells(r + 3, 2).Value = "Changed " & YEAR_PRIOR & ">" & YEAR_CURRENT
-        wsCmp.Cells(r, 3).Value = IIf(hasC, dataC(code)(0), IIf(mapC.Exists(code), "not extracted yet", "no " & YEAR_CURRENT & " file"))
-        wsCmp.Cells(r + 1, 3).Value = IIf(hasP, dataP(code)(0), IIf(mapP.Exists(code), "not extracted yet", "no " & YEAR_PRIOR & " file"))
+        wsCmp.Cells(r, 3).Value = fileC
+        wsCmp.Cells(r + 1, 3).Value = fileP
 
         col = 4
         For Each hk In heads.Keys
@@ -564,14 +580,13 @@ Private Sub BuildCompare(mapP As Object, mapC As Object, wsDP As Worksheet, wsDC
         With wsSum
             .Cells(rs, 1).Value = code
             .Cells(rs, 2).Value = status
-            .Cells(rs, 3).Value = IIf(hasP, dataP(code)(0), "")
-            .Cells(rs, 4).Value = IIf(hasC, dataC(code)(0), "")
-            .Cells(rs, 5).Value = IIf(hasP, secP.Count, "")
-            .Cells(rs, 6).Value = IIf(hasC, secC.Count, "")
-            .Cells(rs, 7).Value = IIf(hasP And hasC, nChg, "")
+            If hasP Then .Cells(rs, 3).Value = fileP: .Cells(rs, 5).Value = secP.Count
+            If hasC Then .Cells(rs, 4).Value = fileC: .Cells(rs, 6).Value = secC.Count
+            If hasP And hasC Then .Cells(rs, 7).Value = nChg
             .Cells(rs, 8).Value = chgList
-            .Cells(rs, 9).Value = JoinNonEmpty(IIf(hasP, YEAR_PRIOR & ": " & dataP(code)(1), ""), _
-                                               IIf(hasC, YEAR_CURRENT & ": " & dataC(code)(1), ""))
+            If hasP Then remP = YEAR_PRIOR & ": " & remP
+            If hasC Then remC = YEAR_CURRENT & ": " & remC
+            .Cells(rs, 9).Value = JoinNonEmpty(remP, remC)
             Select Case status
                 Case "Changes found": .Cells(rs, 2).Interior.Color = RGB(255, 235, 156)
                 Case "No text changes": .Cells(rs, 2).Interior.Color = RGB(198, 239, 206)
@@ -669,7 +684,11 @@ Private Function WordDiff(ByVal oldT As String, ByVal newT As String) As String
                 GoTo NextTok
             End If
         End If
-        If j < m And (i = n Or L(i, j + 1) >= L(i + 1, j)) Then
+        If i >= n Then
+            addBuf = addBuf & " " & b(j): j = j + 1
+        ElseIf j >= m Then
+            remBuf = remBuf & " " & a(i): i = i + 1
+        ElseIf L(i, j + 1) >= L(i + 1, j) Then
             addBuf = addBuf & " " & b(j): j = j + 1
         Else
             remBuf = remBuf & " " & a(i): i = i + 1

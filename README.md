@@ -16,7 +16,8 @@ Numbers are ignored when deciding whether a section changed. Only wording counts
 
 1. Create a new workbook and save it as `.xlsm`.
 2. Alt+F11, File > Import File, pick `AFS_FootnoteCompare.bas`
-   (or Insert > Module and paste the file contents).
+   (or Insert > Module and paste the file contents). Imported modules are named Module1;
+   rename it if you like.
 3. Alt+F8, run `CompareFootnotes`.
 
 ## What happens on a run
