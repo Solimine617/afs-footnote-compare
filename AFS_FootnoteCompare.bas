@@ -38,6 +38,7 @@ Private Const SPLIT_RUNIN_HEADINGS As Boolean = True ' "Bold lead-in - text..." 
 Private Const REPEAT_FURNITURE As Long = 3           ' bold text seen this many times = page header, ignore
 Private Const INTRO_LABEL As String = "(Intro)"      ' text on notes pages before the first heading
 Private Const FIRST_SECTION_COL As Long = 5          ' Data sheets: A code, B file, C when, D remark, E.. sections
+Private Const WORD_VISIBLE As Boolean = True         ' show Word while converting so progress and any dialog are visible
 Private Const MAX_CELL As Long = 32000
 Private Const MAX_WORDDIFF_CELLS As Long = 250000
 
@@ -319,10 +320,29 @@ Private Function ExtractSections(ByVal pdfPath As String, ByRef remark As String
     Dim pText() As String, pKind() As Integer, pPage() As Long, pLead() As String
     Set secs = CreateObject("Scripting.Dictionary")
 
+    Dim t0 As Single, tConv As Single, nPages As Long, pg As Long, pageStart() As Long
+    t0 = Timer
     Set doc = gWordApp.Documents.Open(pdfPath, False, True, False)   ' ConfirmConversions, ReadOnly, AddToRecent
+    tConv = Timer - t0
     n = doc.Paragraphs.Count
     If n = 0 Then doc.Close 0: Set ExtractSections = secs: Exit Function
     ReDim pText(1 To n): ReDim pKind(1 To n): ReDim pPage(1 To n): ReDim pLead(1 To n)
+
+    ' Page boundaries once (one call per page, instead of one per paragraph)
+    On Error Resume Next
+    nPages = doc.ComputeStatistics(2)            ' wdStatisticPages
+    On Error GoTo 0
+    If nPages < 1 Then nPages = 1
+    ReDim pageStart(1 To nPages + 1)
+    pageStart(1) = 0
+    For pg = 2 To nPages
+        On Error Resume Next
+        pageStart(pg) = doc.GoTo(1, 1, pg).Start  ' wdGoToPage, wdGoToAbsolute
+        If Err.Number <> 0 Then pageStart(pg) = pageStart(pg - 1): Err.Clear
+        On Error GoTo 0
+    Next pg
+    pageStart(nPages + 1) = doc.Content.End + 1
+    pg = 1
 
     ' Pass 1: pull text, page number, bold state out of Word
     i = 0
@@ -331,7 +351,11 @@ Private Function ExtractSections(ByVal pdfPath As String, ByRef remark As String
         Set rng = para.Range
         pText(i) = CollapseWs(rng.Text)
         If Len(pText(i)) > 0 Then
-            pPage(i) = rng.Information(3)        ' wdActiveEndPageNumber
+            Do While pg < nPages
+                If rng.Start < pageStart(pg + 1) Then Exit Do
+                pg = pg + 1
+            Loop
+            pPage(i) = pg
             b = rng.Font.Bold
             If b = True Then
                 pKind(i) = 2                     ' whole paragraph bold = heading
@@ -394,7 +418,8 @@ NextPara:
     Next i
 
     remark = IIf(anyHeader, notesPages.Count & " notes page(s)", "NOTES HEADER NOT FOUND - whole document used") & _
-             "; " & nHead & " bold heading(s)"
+             "; " & nHead & " bold heading(s); " & nPages & " pages; " & n & " paragraphs; " & _
+             "PDF conversion " & Format$(tConv, "0") & "s, total " & Format$(Timer - t0, "0") & "s"
     Set ExtractSections = secs
 End Function
 
@@ -452,8 +477,15 @@ End Function
 Private Function StartWord() As Boolean
     On Error GoTo Fail
     Set gWordApp = CreateObject("Word.Application")
-    gWordApp.Visible = False
-    gWordApp.DisplayAlerts = 0
+    gWordApp.Visible = WORD_VISIBLE
+    gWordApp.DisplayAlerts = 0                 ' wdAlertsNone
+    gWordApp.AutomationSecurity = 3            ' msoAutomationSecurityForceDisable: no macro / trust prompts
+    On Error Resume Next
+    gWordApp.Options.ConfirmConversions = False
+    gWordApp.Options.CheckGrammarAsYouType = False
+    gWordApp.Options.CheckSpellingAsYouType = False
+    gWordApp.ScreenUpdating = WORD_VISIBLE
+    On Error GoTo Fail
     StartWord = True
     Exit Function
 Fail:
