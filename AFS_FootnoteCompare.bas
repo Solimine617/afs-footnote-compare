@@ -135,7 +135,7 @@ End Sub
 '=====================================================================
 '  BATCH PROMPT / CONFIG
 '=====================================================================
-Private Function AskBatch(total As Long, nPend As Long) As Long
+Private Function AskBatch(ByVal total As Long, ByVal nPend As Long) As Long
     Dim s As String
     If nPend = 0 Then
         If MsgBox("All " & total & " fund(s) are already extracted." & vbCrLf & vbCrLf & _
@@ -159,7 +159,7 @@ Private Function AskBatch(total As Long, nPend As Long) As Long
     Loop
 End Function
 
-Private Function GetFolder(yearLabel As String, cfgRow As Long) As String
+Private Function GetFolder(ByVal yearLabel As String, ByVal cfgRow As Long) As String
     Dim ws As Worksheet, p As String
     Set ws = GetOrCreateSheet("Config")
     ws.Cells(cfgRow, 1).Value = yearLabel & " folder"
@@ -179,7 +179,7 @@ End Function
 '=====================================================================
 '  FILE DISCOVERY
 '=====================================================================
-Private Function BuildFileMap(folder As String, yearLabel As String) As Object
+Private Function BuildFileMap(ByVal folder As String, ByVal yearLabel As String) As Object
     Dim d As Object, f As String, full As String, code As String
     Set d = CreateObject("Scripting.Dictionary")
     f = Dir(folder & "\*.pdf")
@@ -230,7 +230,7 @@ End Function
 '=====================================================================
 '  DATA SHEETS (stored extractions)
 '=====================================================================
-Private Function GetDataSheet(yearLabel As String) As Worksheet
+Private Function GetDataSheet(ByVal yearLabel As String) As Worksheet
     Dim ws As Worksheet, isNew As Boolean
     isNew = Not SheetExists("Data_" & yearLabel)
     Set ws = GetOrCreateSheet("Data_" & yearLabel)
@@ -267,7 +267,7 @@ Private Function LoadHeaderMap(ws As Worksheet) As Object
     Set LoadHeaderMap = d
 End Function
 
-Private Function EnsureColumn(ws As Worksheet, hdr As Object, key As String, display As String) As Long
+Private Function EnsureColumn(ws As Worksheet, hdr As Object, ByVal key As String, ByVal display As String) As Long
     Dim c As Long
     If hdr.Exists(key) Then EnsureColumn = hdr(key): Exit Function
     c = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column + 1
@@ -279,7 +279,7 @@ Private Function EnsureColumn(ws As Worksheet, hdr As Object, key As String, dis
     EnsureColumn = c
 End Function
 
-Private Function ExtractAndStore(code As String, pdfPath As String, fileRemark As String, _
+Private Function ExtractAndStore(ByVal code As String, ByVal pdfPath As String, ByVal fileRemark As String, _
                                  wsData As Worksheet, wsOther As Worksheet) As Boolean
     Dim secs As Object, remark As String, r As Long, k As Variant, v As Variant
     Dim hdr As Object, hdrOther As Object, c As Long, txt As String
@@ -314,7 +314,7 @@ End Function
 '=====================================================================
 '  WORD EXTRACTION: paragraphs + bold flags -> sections by bold heading
 '=====================================================================
-Private Function ExtractSections(pdfPath As String, ByRef remark As String) As Object
+Private Function ExtractSections(ByVal pdfPath As String, ByRef remark As String) As Object
     Dim secs As Object, doc As Object, para As Object, rng As Object
     Dim n As Long, i As Long, b As Variant, lead As String
     Dim pText() As String, pKind() As Integer, pPage() As Long, pLead() As String
@@ -413,7 +413,7 @@ Private Function BoldPrefix(doc As Object, rng As Object) As String
     BoldPrefix = doc.Range(s, s + lo).Text
 End Function
 
-Private Sub AppendSection(secs As Object, head As String, body As String)
+Private Sub AppendSection(secs As Object, ByVal head As String, ByVal body As String)
     Dim k As String, v As Variant
     k = NormalizeKey(head)
     If Len(k) = 0 Then k = NormalizeKey(INTRO_LABEL): head = INTRO_LABEL
@@ -639,7 +639,7 @@ End Function
 '=====================================================================
 '  WORD-LEVEL DIFF:  unchanged words as-is, [-removed-] {+added+}
 '=====================================================================
-Private Function WordDiff(oldT As String, newT As String) As String
+Private Function WordDiff(ByVal oldT As String, ByVal newT As String) As String
     Dim a() As String, b() As String, n As Long, m As Long, i As Long, j As Long
     Dim L() As Long, out As String, remBuf As String, addBuf As String
     a = Split(CollapseWs(oldT), " "): b = Split(CollapseWs(newT), " ")
@@ -697,7 +697,7 @@ Private Sub InitRegex()
     Set rxCont = NewRegex("\(?\s*continued\s*\)?", True, False, True)
 End Sub
 
-Private Function NewRegex(pat As String, ignoreCase As Boolean, multiLine As Boolean, globalMatch As Boolean) As Object
+Private Function NewRegex(ByVal pat As String, ByVal ignoreCase As Boolean, ByVal multiLine As Boolean, ByVal globalMatch As Boolean) As Object
     Set NewRegex = CreateObject("VBScript.RegExp")
     NewRegex.Pattern = pat
     NewRegex.ignoreCase = ignoreCase
@@ -724,7 +724,7 @@ Private Function CollapseWs(ByVal s As String) As String
     CollapseWs = Trim$(rxWs.Replace(s, " "))
 End Function
 
-Private Function SheetExists(nm As String) As Boolean
+Private Function SheetExists(ByVal nm As String) As Boolean
     Dim ws As Worksheet
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets(nm)
@@ -732,7 +732,7 @@ Private Function SheetExists(nm As String) As Boolean
     SheetExists = Not ws Is Nothing
 End Function
 
-Private Function GetOrCreateSheet(nm As String) As Worksheet
+Private Function GetOrCreateSheet(ByVal nm As String) As Worksheet
     If SheetExists(nm) Then
         Set GetOrCreateSheet = ThisWorkbook.Worksheets(nm)
     Else
@@ -741,7 +741,7 @@ Private Function GetOrCreateSheet(nm As String) As Worksheet
     End If
 End Function
 
-Private Function FreshSheet(nm As String) As Worksheet
+Private Function FreshSheet(ByVal nm As String) As Worksheet
     Application.DisplayAlerts = False
     If SheetExists(nm) Then ThisWorkbook.Worksheets(nm).Delete
     Application.DisplayAlerts = True
@@ -757,7 +757,7 @@ Private Sub WriteLog()
     ws.Columns("A").ColumnWidth = 120
 End Sub
 
-Private Function PickFolder(title As String) As String
+Private Function PickFolder(ByVal title As String) As String
     With Application.FileDialog(4)   ' msoFileDialogFolderPicker
         .title = title
         .AllowMultiSelect = False
@@ -765,16 +765,16 @@ Private Function PickFolder(title As String) As String
     End With
 End Function
 
-Private Function StripSlash(p As String) As String
+Private Function StripSlash(ByVal p As String) As String
     If Right$(p, 1) = "\" Then StripSlash = Left$(p, Len(p) - 1) Else StripSlash = p
 End Function
 
-Private Function FileNameOnly(p As String) As String
+Private Function FileNameOnly(ByVal p As String) As String
     If Len(p) = 0 Then Exit Function
     FileNameOnly = Mid$(p, InStrRev(p, "\") + 1)
 End Function
 
-Private Function JoinNonEmpty(a As String, b As String) As String
+Private Function JoinNonEmpty(ByVal a As String, ByVal b As String) As String
     If Len(Trim$(a)) = 0 Then
         JoinNonEmpty = Trim$(b)
     ElseIf Len(Trim$(b)) = 0 Then
